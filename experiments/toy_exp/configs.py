@@ -28,7 +28,7 @@ class configs(DefaultConfigs):
         #    Preprocessing      #
         #########################
 
-        self.root_dir = '/path/to/data'
+        self.root_dir = '/data3/detection_toy'
 
         #########################
         #         I/O           #
@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
-        self.model = 'retina_net'
+        self.model = 'retina_darts'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -50,7 +50,7 @@ class configs(DefaultConfigs):
 
         # choose one of the 3 toy experiments described in https://arxiv.org/pdf/1811.08661.pdf
         # one of ['donuts_shape', 'donuts_pattern', 'circles_scale'].
-        toy_mode = 'donuts_shape'
+        toy_mode = 'donuts_pattern'
 
 
         # path to preprocessed data.
@@ -63,7 +63,7 @@ class configs(DefaultConfigs):
         # settings for deployment in cloud.
         if server_env:
             # path to preprocessed data.
-            pp_root_dir = '/path/to/data'
+            pp_root_dir = '/data3/detection_toy'
             self.pp_name = os.path.join(toy_mode, 'train')
             self.pp_data_path = os.path.join(pp_root_dir, self.pp_name)
             self.pp_test_name = os.path.join(toy_mode, 'test')
@@ -117,7 +117,7 @@ class configs(DefaultConfigs):
 
         self.num_epochs = 100
         self.num_train_batches = 200 if self.dim == 2 else 200
-        self.batch_size = 20 if self.dim == 2 else 8
+        self.batch_size = 1 if self.dim == 2 else 8
 
         self.do_validation = True
         # decide whether to validate on entire patient volumes (like testing) or sampled patches (like training)
@@ -192,6 +192,7 @@ class configs(DefaultConfigs):
          'ufrcnn': self.add_mrcnn_configs,
          'ufrcnn_surrounding': self.add_mrcnn_configs,
          'retina_net': self.add_mrcnn_configs,
+         'retina_darts': self.add_mrcnn_configs,
          'retina_unet': self.add_mrcnn_configs,
          'prob_detector': self.add_mrcnn_configs,
         }[self.model]()
@@ -321,7 +322,8 @@ class configs(DefaultConfigs):
             self.num_seg_classes = 3 if self.class_specific_seg_flag else 2
             self.frcnn_mode = True
 
-        if self.model == 'retina_net' or self.model == 'retina_unet' or self.model == 'prob_detector':
+        if self.model == 'retina_net' or self.model == 'retina_unet' or self.model == 'prob_detector' or \
+                self.model == 'retina_darts':
             # implement extra anchor-scales according to retina-net publication.
             self.rpn_anchor_scales['xy'] = [[ii[0], ii[0] * (2 ** (1 / 3)), ii[0] * (2 ** (2 / 3))] for ii in
                                             self.rpn_anchor_scales['xy']]

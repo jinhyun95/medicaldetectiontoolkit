@@ -366,6 +366,19 @@ class FPN_DARTS(nn.Module):
              conv(self.out_channels, self.out_channels, ks=3, stride=1, pad=1, relu=None),
              conv(self.out_channels, self.out_channels, ks=5, stride=1, pad=2, relu=None)])
 
+        self.Q5_Q4 = nn.ModuleList(
+            [conv(self.out_channels, self.out_channels, ks=1, stride=1, pad=0, relu=None),
+             conv(self.out_channels, self.out_channels, ks=3, stride=1, pad=1, relu=None),
+             conv(self.out_channels, self.out_channels, ks=5, stride=1, pad=2, relu=None)])
+        self.Q4_Q3 = nn.ModuleList(
+            [conv(self.out_channels, self.out_channels, ks=1, stride=1, pad=0, relu=None),
+             conv(self.out_channels, self.out_channels, ks=3, stride=1, pad=1, relu=None),
+             conv(self.out_channels, self.out_channels, ks=5, stride=1, pad=2, relu=None)])
+        self.Q3_Q2 = nn.ModuleList(
+            [conv(self.out_channels, self.out_channels, ks=1, stride=1, pad=0, relu=None),
+             conv(self.out_channels, self.out_channels, ks=3, stride=1, pad=1, relu=None),
+             conv(self.out_channels, self.out_channels, ks=5, stride=1, pad=2, relu=None)])
+
         self.Q5_P4 = nn.ModuleList(
             [conv(self.out_channels, self.out_channels, ks=1, stride=1, pad=0, relu=None),
              conv(self.out_channels, self.out_channels, ks=3, stride=1, pad=1, relu=None),
@@ -379,21 +392,21 @@ class FPN_DARTS(nn.Module):
              conv(self.out_channels, self.out_channels, ks=3, stride=1, pad=1, relu=None),
              conv(self.out_channels, self.out_channels, ks=5, stride=1, pad=2, relu=None)])
 
-        self.Q5_conn = torch.rand(1, 1, 1, 1, 4, requires_grad=True)
-        self.P5_conn_1 = torch.rand(1, 1, 1, 1, 9, requires_grad=True)
-        self.P5_conn_2 = torch.rand(1, 1, 1, 1, 9, requires_grad=True)
-        self.Q4_conn_1 = torch.rand(1, 1, 1, 1, 13, requires_grad=True)
-        self.Q4_conn_2 = torch.rand(1, 1, 1, 1, 13, requires_grad=True)
-        self.Q3_conn_1 = torch.rand(1, 1, 1, 1, 13, requires_grad=True)
-        self.Q3_conn_2 = torch.rand(1, 1, 1, 1, 13, requires_grad=True)
-        self.Q2_conn_1 = torch.rand(1, 1, 1, 1, 13, requires_grad=True)
-        self.Q2_conn_2 = torch.rand(1, 1, 1, 1, 13, requires_grad=True)
-        self.P4_conn_1 = torch.rand(1, 1, 1, 1, 17, requires_grad=True)
-        self.P4_conn_2 = torch.rand(1, 1, 1, 1, 17, requires_grad=True)
-        self.P3_conn_1 = torch.rand(1, 1, 1, 1, 17, requires_grad=True)
-        self.P3_conn_2 = torch.rand(1, 1, 1, 1, 17, requires_grad=True)
-        self.P2_conn_1 = torch.rand(1, 1, 1, 1, 17, requires_grad=True)
-        self.P2_conn_2 = torch.rand(1, 1, 1, 1, 17, requires_grad=True)
+        self.Q5_conn = nn.Parameter(torch.rand(1, 1, 1, 1, 3), requires_grad=True)
+        self.P5_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 8), requires_grad=True)
+        self.P5_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 8), requires_grad=True)
+        self.Q4_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 11), requires_grad=True)
+        self.Q4_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 11), requires_grad=True)
+        self.Q3_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 11), requires_grad=True)
+        self.Q3_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 11), requires_grad=True)
+        self.Q2_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 11), requires_grad=True)
+        self.Q2_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 11), requires_grad=True)
+        self.P4_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 15), requires_grad=True)
+        self.P4_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 15), requires_grad=True)
+        self.P3_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 15), requires_grad=True)
+        self.P3_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 15), requires_grad=True)
+        self.P2_conn_1 = nn.Parameter(torch.rand(1, 1, 1, 1, 15), requires_grad=True)
+        self.P2_conn_2 = nn.Parameter(torch.rand(1, 1, 1, 1, 15), requires_grad=True)
         ############ Feature Pyramid ############
 
     def darts(self, conn):
@@ -423,15 +436,13 @@ class FPN_DARTS(nn.Module):
         # TODO: softmax temperature annealing
         q5_out = []
         q5_out.extend([net(c5_out) for net in self.C5_Q5])
-        q5_out.extend([c5_out])
         q5_out = torch.sum(torch.stack(q5_out, dim=-1) * self.darts(self.Q5_conn), dim=-1, keepdim=False)
 
         q4_out = []
         q4_out.extend([net(c4_out) for net in self.C4_Q4])
         q4_out.extend([F.interpolate(net(c5_out), scale_factor=2) for net in self.C5_Q4])
         q4_out.extend([F.interpolate(net(q5_out), scale_factor=2) for net in self.Q5_Q4])
-        q4_out.extend([c4_out, F.interpolate(c5_out, scale_factor=2), F.interpolate(q5_out, scale_factor=2),
-                       torch.zeros_like(c4_out)])
+        q4_out.extend([F.interpolate(q5_out, scale_factor=2), torch.zeros_like(q4_out[0])])
         q4_out = torch.sum(torch.stack(q4_out, dim=-1) * (self.darts(self.Q4_conn_1) + self.darts(self.Q4_conn_2)),
                            dim=-1, keepdim=False)
 
@@ -439,8 +450,7 @@ class FPN_DARTS(nn.Module):
         q3_out.extend([net(c3_out) for net in self.C3_Q3])
         q3_out.extend([F.interpolate(net(c4_out), scale_factor=2) for net in self.C4_Q3])
         q3_out.extend([F.interpolate(net(q4_out), scale_factor=2) for net in self.Q4_Q3])
-        q3_out.extend([c3_out, F.interpolate(c4_out, scale_factor=2), F.interpolate(q4_out, scale_factor=2),
-                       torch.zeros_like(c3_out)])
+        q3_out.extend([F.interpolate(q4_out, scale_factor=2), torch.zeros_like(q3_out[0])])
         q3_out = torch.sum(torch.stack(q3_out, dim=-1) * (self.darts(self.Q3_conn_1) + self.darts(self.Q3_conn_2)),
                            dim=-1, keepdim=False)
 
@@ -448,15 +458,14 @@ class FPN_DARTS(nn.Module):
         q2_out.extend([net(c2_out) for net in self.C2_Q2])
         q2_out.extend([F.interpolate(net(c3_out), scale_factor=2) for net in self.C3_Q2])
         q2_out.extend([F.interpolate(net(q3_out), scale_factor=2) for net in self.Q3_Q2])
-        q2_out.extend([c2_out, F.interpolate(c3_out, scale_factor=2), F.interpolate(q3_out, scale_factor=2),
-                       torch.zeros_like(c2_out)])
+        q2_out.extend([F.interpolate(q3_out, scale_factor=2), torch.zeros_like(q2_out[0])])
         q2_out = torch.sum(torch.stack(q2_out, dim=-1) * (self.darts(self.Q2_conn_1) + self.darts(self.Q2_conn_2)),
                            dim=-1, keepdim=False)
 
         p5_out = []
         p5_out.extend([net(q5_out) for net in self.Q5_P5])
         p5_out.extend([net(c5_out) for net in self.C5_P5])
-        p5_out.extend([q5_out, c5_out, torch.zeros_like(q5_out)])
+        p5_out.extend([q5_out, torch.zeros_like(q5_out)])
         p5_out = torch.sum(torch.stack(p5_out, dim=-1) * (self.darts(self.P5_conn_1) + self.darts(self.P5_conn_2)),
                            dim=-1, keepdim=False)
 
@@ -465,8 +474,7 @@ class FPN_DARTS(nn.Module):
         p4_out.extend([net(c4_out) for net in self.C4_P4])
         p4_out.extend([F.interpolate(net(q5_out), scale_factor=2) for net in self.Q5_P4])
         p4_out.extend([F.interpolate(net(c5_out), scale_factor=2) for net in self.C5_P4])
-        p4_out.extend([q4_out, c4_out, F.interpolate(q5_out, scale_factor=2), F.interpolate(c5_out, scale_factor=2),
-                       torch.zeros_like(q4_out)])
+        p4_out.extend([q4_out, F.interpolate(q5_out, scale_factor=2), torch.zeros_like(q4_out)])
         p4_out = torch.sum(torch.stack(p4_out, dim=-1) * (self.darts(self.P4_conn_1) + self.darts(self.P4_conn_2)),
                            dim=-1, keepdim=False)
 
@@ -475,8 +483,7 @@ class FPN_DARTS(nn.Module):
         p3_out.extend([net(c3_out) for net in self.C3_P3])
         p3_out.extend([F.interpolate(net(q4_out), scale_factor=2) for net in self.Q4_P3])
         p3_out.extend([F.interpolate(net(c4_out), scale_factor=2) for net in self.C4_P3])
-        p3_out.extend([q3_out, c3_out, F.interpolate(q4_out, scale_factor=2), F.interpolate(c4_out, scale_factor=2),
-                       torch.zeros_like(q3_out)])
+        p3_out.extend([q3_out, F.interpolate(q4_out, scale_factor=2), torch.zeros_like(q3_out)])
         p3_out = torch.sum(torch.stack(p3_out, dim=-1) * (self.darts(self.P3_conn_1) + self.darts(self.P3_conn_2)),
                            dim=-1, keepdim=False)
 
@@ -485,8 +492,7 @@ class FPN_DARTS(nn.Module):
         p2_out.extend([net(c2_out) for net in self.C2_P2])
         p2_out.extend([F.interpolate(net(q3_out), scale_factor=2) for net in self.Q3_P2])
         p2_out.extend([F.interpolate(net(c3_out), scale_factor=2) for net in self.C3_P2])
-        p2_out.extend([q2_out, c2_out, F.interpolate(q3_out, scale_factor=2), F.interpolate(c3_out, scale_factor=2),
-                       torch.zeros_like(q2_out)])
+        p2_out.extend([q2_out, F.interpolate(q3_out, scale_factor=2), torch.zeros_like(q2_out)])
         p2_out = torch.sum(torch.stack(p2_out, dim=-1) * (self.darts(self.P2_conn_1) + self.darts(self.P2_conn_2)),
                            dim=-1, keepdim=False)
 

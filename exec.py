@@ -130,7 +130,7 @@ if __name__ == '__main__':
                         help='one out of: train / test / train_test / analysis / create_exp')
     parser.add_argument('--folds', nargs='+', type=int, default=None,
                         help='None runs over all folds in CV. otherwise specify list of folds.')
-    parser.add_argument('--exp_dir', type=str, default='/path/to/experiment/directory',
+    parser.add_argument('--exp_dir', type=str, default='./experiments/toy_retinadarts',
                         help='path to experiment dir. will be created if non existent.')
     parser.add_argument('--server_env', default=False, action='store_true',
                         help='change IO settings to deploy models on a cluster.')
@@ -141,9 +141,9 @@ if __name__ == '__main__':
                              'where source code might change before the job actually runs.')
     parser.add_argument('--resume_to_checkpoint', type=str, default=None,
                         help='if resuming to checkpoint, the desired fold still needs to be parsed via --folds.')
-    parser.add_argument('--exp_source', type=str, default='experiments/toy_exp',
+    parser.add_argument('--exp_source', type=str, default='./experiments/toy_exp',
                         help='specifies, from which source experiment to load configs and data_loader.')
-
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     args = parser.parse_args()
     folds = args.folds
     resume_to_checkpoint = args.resume_to_checkpoint
