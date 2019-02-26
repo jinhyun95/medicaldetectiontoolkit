@@ -414,13 +414,34 @@ class FPN_DARTS(nn.Module):
             arg = torch.argmax(torch.squeeze(conn), dim=0, keepdim=False).item()
             connected = torch.zeros_like(conn)
             connected[0, 0, 0, 0, arg] = 1.
-            prob = F.softmax(conn / self.temperature, dim=-1)[0, 0, 0, 0, arg]
+            prob = F.softmax(conn / self.temperature, dim=-1)[0, 0, 0, 0, arg].detach()
             return connected * prob
         else:
             return F.softmax(conn / self.temperature, dim=-1) * 1.
 
     def normalize(self, conn):
         return conn / torch.norm(conn, dim=-1, keepdim=True)
+
+    def freeze_w_or_a(self, mode):
+        # TODO: apply(or fix) this function to train conv weights and network architecture alternatively
+        w = [self.C5_Q5, self.C4_Q4, self.C3_Q3, self.C2_Q2, self.C5_P5, self.C4_P4, self.C3_P3, self.C2_P2,
+             self.C5_Q4, self.C4_Q3, self.C3_Q2, self.C5_P4, self.C4_P3, self.C3_P2,
+             self.Q5_P5, self.Q4_P4, self.Q3_P3, self.Q2_P2,
+             self.Q5_Q4, self.Q4_Q3, self.Q3_Q2, self.Q5_P4, self.Q4_P3, self.Q3_P2]
+        a = [self.Q5_conn, self.Q4_conn1, self.Q4_conn2, self.Q3_conn1, self.Q3_conn2, self.Q2_conn1, self.Q2_conn2,
+             self.P5_conn_1, self.P5_conn_2, self.P4_conn1, self.P4_conn2, self.P3_conn1, self.P3_conn2, self.P2_conn1, self.P2_conn2]
+        if mode == 'w':
+            for weight in w:
+                for param in weight.parameters():
+                    param.requires_grad = False
+            for arch in a:
+                arch.requires_grad = True
+        elif mode == 'a':
+            for weight in w:
+                for param in weight.parameters():
+                    param.requires_grad = True
+            for arch in a:
+                arch.requires_grad = False
 
     def forward(self, x):
         """
