@@ -411,12 +411,16 @@ class FPN_DARTS(nn.Module):
 
     def darts(self, conn):
         if self.fix_architecture:
-            arg = torch.argmax(torch.squeeze(conn), dim=0).cpu().numpy()[0, 0, 0, 0]
+            arg = torch.argmax(torch.squeeze(conn), dim=0, keepdim=False).item()
             connected = torch.zeros_like(conn)
             connected[0, 0, 0, 0, arg] = 1.
-            return connected
+            prob = F.softmax(conn / self.temperature, dim=-1)[0, 0, 0, 0, arg]
+            return connected * prob
         else:
-            return F.softmax(conn / self.temperature, dim=-1)
+            return F.softmax(conn / self.temperature, dim=-1) * 1.
+
+    def normalize(self, conn):
+        return conn / torch.norm(conn, dim=-1, keepdim=True)
 
     def forward(self, x):
         """
@@ -433,11 +437,13 @@ class FPN_DARTS(nn.Module):
         ############ ResNet Backbone ############
 
         ############ Feature Pyramid ############
-        # TODO: softmax temperature annealing
+        self.Q5_conn = self.normalize(self.Q5_conn)
         q5_out = []
         q5_out.extend([net(c5_out) for net in self.C5_Q5])
         q5_out = torch.sum(torch.stack(q5_out, dim=-1) * self.darts(self.Q5_conn), dim=-1, keepdim=False)
 
+        self.Q4_conn_1 = self.normalize(self.Q4_conn_1)
+        self.Q4_conn_2 = self.normalize(self.Q4_conn_2)
         q4_out = []
         q4_out.extend([net(c4_out) for net in self.C4_Q4])
         q4_out.extend([F.interpolate(net(c5_out), scale_factor=2) for net in self.C5_Q4])
@@ -446,6 +452,8 @@ class FPN_DARTS(nn.Module):
         q4_out = torch.sum(torch.stack(q4_out, dim=-1) * (self.darts(self.Q4_conn_1) + self.darts(self.Q4_conn_2)),
                            dim=-1, keepdim=False)
 
+        self.Q3_conn_1 = self.normalize(self.Q3_conn_1)
+        self.Q3_conn_2 = self.normalize(self.Q3_conn_2)
         q3_out = []
         q3_out.extend([net(c3_out) for net in self.C3_Q3])
         q3_out.extend([F.interpolate(net(c4_out), scale_factor=2) for net in self.C4_Q3])
@@ -454,6 +462,8 @@ class FPN_DARTS(nn.Module):
         q3_out = torch.sum(torch.stack(q3_out, dim=-1) * (self.darts(self.Q3_conn_1) + self.darts(self.Q3_conn_2)),
                            dim=-1, keepdim=False)
 
+        self.Q2_conn_1 = self.normalize(self.Q2_conn_1)
+        self.Q2_conn_2 = self.normalize(self.Q2_conn_2)
         q2_out = []
         q2_out.extend([net(c2_out) for net in self.C2_Q2])
         q2_out.extend([F.interpolate(net(c3_out), scale_factor=2) for net in self.C3_Q2])
@@ -462,6 +472,8 @@ class FPN_DARTS(nn.Module):
         q2_out = torch.sum(torch.stack(q2_out, dim=-1) * (self.darts(self.Q2_conn_1) + self.darts(self.Q2_conn_2)),
                            dim=-1, keepdim=False)
 
+        self.P5_conn_1 = self.normalize(self.P5_conn_1)
+        self.P5_conn_2 = self.normalize(self.P5_conn_2)
         p5_out = []
         p5_out.extend([net(q5_out) for net in self.Q5_P5])
         p5_out.extend([net(c5_out) for net in self.C5_P5])
@@ -469,6 +481,8 @@ class FPN_DARTS(nn.Module):
         p5_out = torch.sum(torch.stack(p5_out, dim=-1) * (self.darts(self.P5_conn_1) + self.darts(self.P5_conn_2)),
                            dim=-1, keepdim=False)
 
+        self.P4_conn_1 = self.normalize(self.P4_conn_1)
+        self.P4_conn_2 = self.normalize(self.P4_conn_2)
         p4_out = []
         p4_out.extend([net(q4_out) for net in self.Q4_P4])
         p4_out.extend([net(c4_out) for net in self.C4_P4])
@@ -478,6 +492,8 @@ class FPN_DARTS(nn.Module):
         p4_out = torch.sum(torch.stack(p4_out, dim=-1) * (self.darts(self.P4_conn_1) + self.darts(self.P4_conn_2)),
                            dim=-1, keepdim=False)
 
+        self.P3_conn_1 = self.normalize(self.P3_conn_1)
+        self.P3_conn_2 = self.normalize(self.P3_conn_2)
         p3_out = []
         p3_out.extend([net(q3_out) for net in self.Q3_P3])
         p3_out.extend([net(c3_out) for net in self.C3_P3])
@@ -487,6 +503,8 @@ class FPN_DARTS(nn.Module):
         p3_out = torch.sum(torch.stack(p3_out, dim=-1) * (self.darts(self.P3_conn_1) + self.darts(self.P3_conn_2)),
                            dim=-1, keepdim=False)
 
+        self.P2_conn_1 = self.normalize(self.P2_conn_1)
+        self.P2_conn_2 = self.normalize(self.P2_conn_2)
         p2_out = []
         p2_out.extend([net(q2_out) for net in self.Q2_P2])
         p2_out.extend([net(c2_out) for net in self.C2_P2])
