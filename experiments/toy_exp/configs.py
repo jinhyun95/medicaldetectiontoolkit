@@ -39,7 +39,7 @@ class configs(DefaultConfigs):
         self.dim = 2
 
         # one out of ['mrcnn', 'retina_net', 'retina_unet', 'detection_unet', 'ufrcnn', 'detection_unet'].
-        self.model = 'retina_net'
+        self.model = 'retina_darts'
 
         DefaultConfigs.__init__(self, self.model, server_env, self.dim)
 
@@ -115,9 +115,9 @@ class configs(DefaultConfigs):
         #  Schedule / Selection #
         #########################
 
-        self.num_epochs = 100
+        self.num_epochs = 20
         self.num_train_batches = 200 if self.dim == 2 else 200
-        self.batch_size = 1 if self.dim == 2 else 8
+        self.batch_size = 8 if self.dim == 2 else 8
 
         self.do_validation = True
         # decide whether to validate on entire patient volumes (like testing) or sampled patches (like training)
@@ -133,8 +133,8 @@ class configs(DefaultConfigs):
         #########################
 
         # set the top-n-epochs to be saved for temporal averaging in testing.
-        self.save_n_models = 5
-        self.test_n_epochs = 5
+        self.save_n_models = 1
+        self.test_n_epochs = 1
 
         # set a minimum epoch number for saving in case of instabilities in the first phase of training.
         self.min_save_thresh = 0 if self.dim == 2 else 0

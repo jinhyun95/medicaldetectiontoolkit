@@ -65,15 +65,20 @@ def train(logger):
 
         for bix in range(cf.num_train_batches):
             batch = next(batch_gen['train'])
-            tic_fw = time.time()
+            tic = time.time()
+            # train w
             results_dict = net.train_forward(batch)
-            tic_bw = time.time()
             optimizer.zero_grad()
             results_dict['torch_loss'].backward()
             optimizer.step()
-            logger.info('tr. batch {0}/{1} (ep. {2}) fw {3:.3f}s / bw {4:.3f}s / total {5:.3f}s || '
-                        .format(bix + 1, cf.num_train_batches, epoch, tic_bw - tic_fw,
-                                time.time() - tic_bw, time.time() - tic_fw) + results_dict['logger_string'])
+            # train a
+            results_dict = net.train_forward(batch)
+            optimizer.zero_grad()
+            results_dict['torch_loss'].backward()
+            optimizer.step()
+            logger.info('tr. batch {0}/{1} (ep. {2}) time {3:.3f}s|| '
+                        .format(bix + 1, cf.num_train_batches, epoch, time.time() - tic) +
+                        results_dict['logger_string'])
             train_results_list.append([results_dict['boxes'], batch['pid']])
             monitor_metrics['train']['monitor_values'][epoch].append(results_dict['monitor_values'])
 
@@ -96,7 +101,7 @@ def train(logger):
                     monitor_metrics['val']['monitor_values'][epoch].append(results_dict['monitor_values'])
 
                 _, monitor_metrics['val'] = val_evaluator.evaluate_predictions(val_results_list, monitor_metrics['val'])
-                model_selector.run_model_selection(net, optimizer, monitor_metrics, epoch)
+                model_selector.run_model_selection(net, optimizer, monitor_metrics, epoch, logger)
 
             # update monitoring and prediction plots
             TrainingPlot.update_and_save(monitor_metrics, epoch)
@@ -107,6 +112,10 @@ def train(logger):
             results_dict = net.train_forward(batch, is_validation=True)
             logger.info('plotting predictions from validation sampling.')
             plot_batch_prediction(batch, results_dict, cf)
+            if cf.model == 'retina_darts':
+                for conn in ['Q5_conn', 'Q4_conn_1', 'Q4_conn_2', 'Q3_conn_1', 'Q3_conn_2', 'Q2_conn_1', 'Q2_conn_2',
+                             'P5_conn_1', 'P5_conn_2', 'P4_conn_1', 'P4_conn_2', 'P3_conn_1', 'P3_conn_2', 'P2_conn_1', 'P2_conn_2']:
+                    logger.info(conn + ': '+','.join(['%.3f' % x for x in list(net.Fpn.darts(getattr(net.Fpn, conn)).cpu().numpy()[0, 0, 0, 0, :])]))
 
 
 def test(logger):
@@ -128,7 +137,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str,  default='train_test',
                         help='one out of: train / test / train_test / analysis / create_exp')
-    parser.add_argument('--folds', nargs='+', type=int, default=None,
+    parser.add_argument('--folds', nargs='+', type=int, default=[0],
                         help='None runs over all folds in CV. otherwise specify list of folds.')
     parser.add_argument('--exp_dir', type=str, default='./experiments/toy_retinadarts',
                         help='path to experiment dir. will be created if non existent.')

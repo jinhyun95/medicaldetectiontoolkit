@@ -146,11 +146,11 @@ class ModelSelector:
         self.saved_epochs = [-1] * cf.save_n_models
         self.logger = logger
 
-    def run_model_selection(self, net, optimizer, monitor_metrics, epoch):
+    def run_model_selection(self, net, optimizer, monitor_metrics, epoch, logger):
 
         # take the mean over all selection criteria in each epoch
         non_nan_scores = np.mean(np.array([[0 if ii is None else ii for ii in monitor_metrics['val'][sc]] for sc in self.cf.model_selection_criteria]), 0)
-        print('non none scores:', non_nan_scores)
+        logger.info('non none scores:' + str(list(non_nan_scores)))
         epochs_scores = [ii for ii in non_nan_scores[1:]]
         # ranking of epochs according to model_selection_criterion
         epoch_ranking = np.argsort(epochs_scores)[::-1] + 1 #epochs start at 1

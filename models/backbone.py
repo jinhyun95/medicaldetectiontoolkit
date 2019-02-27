@@ -288,6 +288,7 @@ class FPN_DARTS(nn.Module):
         self.temperature = 1.
         self.annealing_rate = 1e-4
         self.fix_architecture = False
+        self.training_w = True
 
         self.C5_Q5 = nn.ModuleList(
             [conv(start_filts * 32 + cf.n_latent_dims, self.out_channels, ks=1, stride=1, pad=0, relu=None),
@@ -420,28 +421,32 @@ class FPN_DARTS(nn.Module):
             return F.softmax(conn / self.temperature, dim=-1) * 1.
 
     def normalize(self, conn):
-        return conn / torch.norm(conn, dim=-1, keepdim=True)
+        return nn.Parameter(conn / torch.norm(conn, dim=-1, keepdim=True).detach())
 
-    def freeze_w_or_a(self, mode):
-        # TODO: apply(or fix) this function to train conv weights and network architecture alternatively
-        w = [self.C5_Q5, self.C4_Q4, self.C3_Q3, self.C2_Q2, self.C5_P5, self.C4_P4, self.C3_P3, self.C2_P2,
+    def freeze_w_or_a(self):
+        w = [self.C2, self.C3, self.C4, self.C5,
+             self.C5_Q5, self.C4_Q4, self.C3_Q3, self.C2_Q2, self.C5_P5, self.C4_P4, self.C3_P3, self.C2_P2,
              self.C5_Q4, self.C4_Q3, self.C3_Q2, self.C5_P4, self.C4_P3, self.C3_P2,
              self.Q5_P5, self.Q4_P4, self.Q3_P3, self.Q2_P2,
              self.Q5_Q4, self.Q4_Q3, self.Q3_Q2, self.Q5_P4, self.Q4_P3, self.Q3_P2]
-        a = [self.Q5_conn, self.Q4_conn1, self.Q4_conn2, self.Q3_conn1, self.Q3_conn2, self.Q2_conn1, self.Q2_conn2,
-             self.P5_conn_1, self.P5_conn_2, self.P4_conn1, self.P4_conn2, self.P3_conn1, self.P3_conn2, self.P2_conn1, self.P2_conn2]
-        if mode == 'w':
-            for weight in w:
-                for param in weight.parameters():
-                    param.requires_grad = False
-            for arch in a:
-                arch.requires_grad = True
-        elif mode == 'a':
+        a = [self.Q5_conn, self.Q4_conn_1, self.Q4_conn_2, self.Q3_conn_1, self.Q3_conn_2, self.Q2_conn_1, self.Q2_conn_2,
+             self.P5_conn_1, self.P5_conn_2, self.P4_conn_1, self.P4_conn_2, self.P3_conn_1, self.P3_conn_2, self.P2_conn_1, self.P2_conn_2]
+        if self.training_w:
             for weight in w:
                 for param in weight.parameters():
                     param.requires_grad = True
+                weight.train()
             for arch in a:
                 arch.requires_grad = False
+        else:
+            for weight in w:
+                for param in weight.parameters():
+                    param.requires_grad = False
+                weight.eval()
+            for arch in a:
+                arch.requires_grad = True
+
+        self.training_w = not self.training_w
 
     def forward(self, x):
         """
@@ -458,6 +463,9 @@ class FPN_DARTS(nn.Module):
         ############ ResNet Backbone ############
 
         ############ Feature Pyramid ############
+        if self.training:
+            self.freeze_w_or_a()
+
         self.Q5_conn = self.normalize(self.Q5_conn)
         q5_out = []
         q5_out.extend([net(c5_out) for net in self.C5_Q5])
