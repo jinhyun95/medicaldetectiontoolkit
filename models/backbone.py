@@ -286,7 +286,7 @@ class FPN_DARTS(nn.Module):
         ############ Feature Pyramid ############
         self.out_channels = cf.end_filts
         self.temperature = 1.
-        self.annealing_rate = 1e-4
+        self.annealing_rate = 1e-3
         self.fix_architecture = False
         self.training_w = True
 
@@ -545,7 +545,7 @@ class FPN_DARTS(nn.Module):
 
         out_list = [p2_out, p3_out, p4_out, p5_out]
         if self.training:
-            self.temperature *= (1 + self.annealing_rate)
+            self.temperature *= (1 - self.annealing_rate)
         ############ Feature Pyramid ############
 
         return out_list
